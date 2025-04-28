@@ -1,0 +1,68 @@
+name: Terraform EKS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "terraform/**"
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  TERRAFORM_VERSION: 1.5.0
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Format
+        working-directory: ./terraform
+        run: terraform fmt -check
+
+      - name: Terraform Plan
+        env:
+            TF_VAR_cluster_role_arn: ${{ secrets.CLUSTER_ROLE_ARN }}
+            TF_VAR_node_role_arn: ${{ secrets.NODE_ROLE_ARN }}
+            TF_VAR_mysql_order_db_name: ${{ secrets.MYSQL_ORDER_DB_NAME }}
+            TF_VAR_mysql_order_db_username: ${{ secrets.MYSQL_ORDER_DB_USERNAME }}
+            TF_VAR_mysql_order_db_password: ${{ secrets.MYSQL_ORDER_DB_PASSWORD }}
+            TF_VAR_mysql_product_db_name: ${{ secrets.MYSQL_PRODUCT_DB_NAME }}
+            TF_VAR_mysql_product_db_username: ${{ secrets.MYSQL_PRODUCT_DB_USERNAME }}
+            TF_VAR_mysql_product_db_password: ${{ secrets.MYSQL_PRODUCT_DB_PASSWORD }}
+        working-directory: ./terraform
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        env:
+            TF_VAR_cluster_role_arn: ${{ secrets.CLUSTER_ROLE_ARN }}
+            TF_VAR_node_role_arn: ${{ secrets.NODE_ROLE_ARN }}
+            TF_VAR_mysql_order_db_name: ${{ secrets.MYSQL_ORDER_DB_NAME }}
+            TF_VAR_mysql_order_db_username: ${{ secrets.MYSQL_ORDER_DB_USERNAME }}
+            TF_VAR_mysql_order_db_password: ${{ secrets.MYSQL_ORDER_DB_PASSWORD }}
+            TF_VAR_mysql_product_db_name: ${{ secrets.MYSQL_PRODUCT_DB_NAME }}
+            TF_VAR_mysql_product_db_username: ${{ secrets.MYSQL_PRODUCT_DB_USERNAME }}
+            TF_VAR_mysql_product_db_password: ${{ secrets.MYSQL_PRODUCT_DB_PASSWORD }}
+        working-directory: ./terraform
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve tfplan
