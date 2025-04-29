@@ -1,19 +1,24 @@
-output "cluster_endpoint" {
-  value = local.cluster_exists ? data.aws_eks_cluster.existing.endpoint : aws_eks_cluster.this[0].endpoint
+output "eks_cluster_endpoint" {
+  value       = aws_eks_cluster.this.endpoint
+  description = "EKS cluster API endpoint"
 }
 
-output "cluster_name" {
-  value = var.cluster_name
+output "eks_cluster_name" {
+  value       = aws_eks_cluster.this.name
+  description = "EKS cluster name"
 }
 
-output "node_group_status" {
-  value = local.node_group_exists ? "Existing node group found" : "New node group created"
+output "mysql_order_db_endpoint" {
+  value       = aws_db_instance.rds_mysql_order.endpoint
+  description = "MySQL Order Database Endpoint"
 }
 
-output "rds_order_service_endpoint" {
-  value = length(aws_db_instance.order_service_mysql) > 0 ? aws_db_instance.order_service_mysql[0].endpoint : null
+output "mysql_product_db_endpoint" {
+  value       = aws_db_instance.rds_mysql_product.endpoint
+  description = "MySQL Product Database Endpoint"
 }
 
-output "rds_product_service_endpoint" {
-  value = length(aws_db_instance.product_service_mysql) > 0 ? aws_db_instance.product_service_mysql[0].endpoint : null
+output "load_balancer_url" {
+  value       = aws_lb.http.dns_name
+  description = "URL of the load balancer"
 }

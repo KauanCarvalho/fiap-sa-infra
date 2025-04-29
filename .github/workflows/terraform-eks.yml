@@ -8,7 +8,6 @@ on:
   workflow_dispatch:
 
 env:
-  AWS_REGION: us-east-1
   TERRAFORM_VERSION: 1.5.0
 
 jobs:
@@ -25,12 +24,12 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "1.5.0"
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
 
       - name: Terraform Init
         working-directory: ./terraform
@@ -53,7 +52,7 @@ jobs:
         working-directory: ./terraform
         run: terraform plan -out=tfplan
 
-      - name: Terraform Apply
+      - name: Terraform Apply (auto-approve)
         env:
             TF_VAR_cluster_role_arn: ${{ secrets.CLUSTER_ROLE_ARN }}
             TF_VAR_node_role_arn: ${{ secrets.NODE_ROLE_ARN }}

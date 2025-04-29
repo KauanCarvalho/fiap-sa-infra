@@ -1,86 +1,80 @@
 data "aws_availability_zones" "available" {}
 
-data "aws_db_subnet_group" "existing" {
-  name = "${var.cluster_name}-rds-subnet-group"
-}
-
-data "aws_eks_cluster" "existing" {
-  name = var.cluster_name
-}
-
-data "aws_eks_node_groups" "all_node_groups" {
-  cluster_name = var.cluster_name
-}
-
-locals {
-  cluster_exists    = length(data.aws_eks_cluster.existing.id) > 0
-  node_group_exists = contains(data.aws_eks_node_groups.all_node_groups.names, "${var.cluster_name}-nodes")
-}
-
 resource "aws_vpc" "this" {
-  count      = local.cluster_exists ? 0 : 1
-  cidr_block = "10.0.0.0/16"
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
 
   tags = {
-    Name = "${var.cluster_name}-vpc"
+    Name = "fiap-restaurant-vpc"
+  }
+}
+
+resource "aws_subnet" "public" {
+  count                   = 2
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = cidrsubnet(aws_vpc.this.cidr_block, 8, count.index)
+  availability_zone       = element(data.aws_availability_zones.available.names, count.index)
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name                                        = "fiap-restaurant-public-subnet-${count.index}"
+    "kubernetes.io/role/elb"                    = "1"
+    "kubernetes.io/cluster/${var.cluster_name}" = "shared"
   }
 }
 
 resource "aws_internet_gateway" "this" {
-  count  = local.cluster_exists ? 0 : 1
-  vpc_id = aws_vpc.this[0].id
-}
-
-resource "aws_subnet" "public" {
-  count                   = local.cluster_exists ? 0 : 2
-  vpc_id                  = aws_vpc.this[0].id
-  cidr_block              = cidrsubnet("10.0.0.0/16", 8, count.index)
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true
+  vpc_id = aws_vpc.this.id
 
   tags = {
-    Name = "${var.cluster_name}-public-subnet-${count.index}"
+    Name = "fiap-restaurant-igw"
   }
 }
 
-resource "aws_subnet" "private" {
-  count                   = local.cluster_exists ? 0 : 2
-  vpc_id                  = aws_vpc.this[0].id
-  cidr_block              = cidrsubnet("10.0.0.0/16", 8, count.index + 10)
-  availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = false
-
-  tags = {
-    Name = "${var.cluster_name}-private-subnet-${count.index}"
-  }
-}
-
-resource "aws_route_table" "public" {
-  count  = local.cluster_exists ? 0 : 1
-  vpc_id = aws_vpc.this[0].id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.this[0].id
-  }
-}
-
-resource "aws_route_table_association" "public" {
-  count          = local.cluster_exists ? 0 : length(aws_subnet.public)
-  subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public[0].id
-}
-
-resource "aws_security_group" "node_group_sg" {
-  count       = local.cluster_exists ? 0 : 1
-  name        = "${var.cluster_name}-node-group-sg"
-  description = "Security group for EKS Node Group"
-  vpc_id      = aws_vpc.this[0].id
+resource "aws_security_group" "lb_sg" {
+  vpc_id = aws_vpc.this.id
 
   ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "eks_nodes_sg" {
+  vpc_id      = aws_vpc.this.id
+  description = "EKS node group SG"
+
+  ingress {
+    description = "Allow EKS control plane to communicate with nodes"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "Allow all node-to-node traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    self        = true
+  }
+
+  ingress {
+    description = "Allow pods from anywhere (optional)"
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -92,12 +86,29 @@ resource "aws_security_group" "node_group_sg" {
   }
 
   tags = {
-    Name = "${var.cluster_name}-node-group-sg"
+    Name = "${var.cluster_name}-eks-nodes-sg"
+  }
+}
+
+resource "aws_security_group" "rds_sg" {
+  vpc_id = aws_vpc.this.id
+
+  ingress {
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
 resource "aws_eks_cluster" "this" {
-  count    = local.cluster_exists ? 0 : 1
   name     = var.cluster_name
   role_arn = var.cluster_role_arn
 
@@ -105,105 +116,115 @@ resource "aws_eks_cluster" "this" {
     subnet_ids = aws_subnet.public[*].id
   }
 
-  lifecycle {
-    ignore_changes  = [tags, version, kubernetes_network_config]
-    prevent_destroy = true
-  }
-}
+  version = "1.27"
 
-locals {
-  eks_cluster_name = local.cluster_exists ? data.aws_eks_cluster.existing.name : aws_eks_cluster.this[0].name
+  tags = {
+    Environment = "production"
+    Project     = var.cluster_name
+  }
+
+  lifecycle {
+    ignore_changes = [tags, version, kubernetes_network_config]
+  }
+
+  depends_on = [
+    aws_vpc.this,
+    aws_subnet.public
+  ]
 }
 
 resource "aws_eks_node_group" "this" {
-  count           = local.node_group_exists ? 0 : 1
-  cluster_name    = local.eks_cluster_name
+  cluster_name    = aws_eks_cluster.this.name
   node_group_name = "${var.cluster_name}-nodes"
   node_role_arn   = var.node_role_arn
-  subnet_ids      = local.cluster_exists ? data.aws_eks_cluster.existing.vpc_config[0].subnet_ids : aws_subnet.public[*].id
+  subnet_ids      = aws_subnet.public[*].id
+
+  ami_type             = "AL2_x86_64"
+  capacity_type        = "SPOT"
+  disk_size            = 20
+  force_update_version = false
+  instance_types       = ["t3.small"]
 
   scaling_config {
-    desired_size = 2
-    max_size     = 3
+    desired_size = 1
+    max_size     = 2
     min_size     = 1
   }
 
-  lifecycle {
-    create_before_destroy = true
-    ignore_changes        = [scaling_config[0].desired_size]
+  labels = {
+    role = "nodes-${var.cluster_name}"
   }
 
-  tags = {
-    Name = "${var.cluster_name}-node-group"
-  }
+  depends_on = [aws_eks_cluster.this]
 }
 
-resource "aws_security_group" "rds_sg" {
-  count       = local.cluster_exists ? 0 : 1
-  name        = "${var.cluster_name}-rds-sg"
-  description = "Allow EKS nodes to access RDS"
-  vpc_id      = aws_vpc.this[0].id
+resource "aws_lb" "http" {
+  name                             = "fiap-restaurant-lb"
+  internal                         = false
+  load_balancer_type               = "application"
+  security_groups                  = [aws_security_group.lb_sg.id]
+  subnets                          = aws_subnet.public[*].id
+  enable_deletion_protection       = false
+  enable_cross_zone_load_balancing = true
 
-  ingress {
-    description     = "MySQL from EKS Nodes"
-    from_port       = 3306
-    to_port         = 3306
-    protocol        = "tcp"
-    security_groups = [aws_security_group.node_group_sg[0].id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+  tags = {
+    Name = "fiap-restaurant-lb"
   }
 }
 
 resource "aws_db_subnet_group" "rds_subnet_group" {
-  count      = data.aws_db_subnet_group.existing.id != "" ? 0 : 1
-  name       = "${var.cluster_name}-rds-subnet-group"
-  subnet_ids = aws_subnet.private[*].id
+  name       = "fiap-restaurant-rds-subnet-group"
+  subnet_ids = aws_subnet.public[*].id
 
   tags = {
-    Name = "${var.cluster_name}-rds-subnet-group"
+    Name = "fiap-restaurant-rds-subnet-group"
   }
 }
 
-resource "aws_db_instance" "order_service_mysql" {
-  count                  = data.aws_db_subnet_group.existing.id != "" ? 0 : 1
-  identifier             = "${var.cluster_name}-order-service-mysql"
-  engine                 = "mysql"
-  instance_class         = "db.t3.micro"
+resource "aws_db_instance" "rds_mysql_order" {
   allocated_storage      = 20
+  storage_type           = "gp2"
+  engine                 = "mysql"
+  engine_version         = "8.0"
+  instance_class         = "db.t3.micro"
+  db_subnet_group_name   = aws_db_subnet_group.rds_subnet_group.id
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
   db_name                = var.mysql_order_db_name
   username               = var.mysql_order_db_username
   password               = var.mysql_order_db_password
   skip_final_snapshot    = true
-  publicly_accessible    = false
-  vpc_security_group_ids = [aws_security_group.rds_sg[0].id]
-  db_subnet_group_name   = "${var.cluster_name}-rds-subnet-group"
+  publicly_accessible    = true
 
   tags = {
-    Name = "${var.cluster_name}-order-service-mysql"
+    Name = "fiap-restaurant-rds-mysql-order"
   }
+
+  depends_on = [
+    aws_db_subnet_group.rds_subnet_group,
+    aws_security_group.rds_sg
+  ]
 }
 
-resource "aws_db_instance" "product_service_mysql" {
-  count                  = data.aws_db_subnet_group.existing.id != "" ? 0 : 1
-  identifier             = "${var.cluster_name}-product-service-mysql"
-  engine                 = "mysql"
-  instance_class         = "db.t3.micro"
+resource "aws_db_instance" "rds_mysql_product" {
   allocated_storage      = 20
+  storage_type           = "gp2"
+  engine                 = "mysql"
+  engine_version         = "8.0"
+  instance_class         = "db.t3.micro"
+  db_subnet_group_name   = aws_db_subnet_group.rds_subnet_group.id
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
   db_name                = var.mysql_product_db_name
   username               = var.mysql_product_db_username
   password               = var.mysql_product_db_password
   skip_final_snapshot    = true
-  publicly_accessible    = false
-  vpc_security_group_ids = [aws_security_group.rds_sg[0].id]
-  db_subnet_group_name   = "${var.cluster_name}-rds-subnet-group"
+  publicly_accessible    = true
 
   tags = {
-    Name = "${var.cluster_name}-product-service-mysql"
+    Name = "fiap-restaurant-rds-mysql-product"
   }
+
+  depends_on = [
+    aws_db_subnet_group.rds_subnet_group,
+    aws_security_group.rds_sg
+  ]
 }

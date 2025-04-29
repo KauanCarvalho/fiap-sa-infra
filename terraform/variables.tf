@@ -7,7 +7,7 @@ variable "region" {
 variable "cluster_name" {
   description = "Name of the EKS cluster and prefix for all related resources"
   type        = string
-  default     = "fiap-restaurant"
+  default     = "fiap-restaurant-production"
 }
 
 variable "cluster_role_arn" {
