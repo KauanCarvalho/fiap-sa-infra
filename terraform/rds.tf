@@ -47,6 +47,11 @@ resource "aws_db_instance" "rds_mysql_order" {
   db_subnet_group_name   = aws_db_subnet_group.rds.name
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
 
+  tags = {
+    Name = "rds-mysql-order"
+    Type = "order"
+  }
+
   depends_on = [
     aws_db_subnet_group.rds,
     aws_security_group.rds_sg
@@ -67,6 +72,11 @@ resource "aws_db_instance" "rds_mysql_product" {
 
   db_subnet_group_name   = aws_db_subnet_group.rds.name
   vpc_security_group_ids = [aws_security_group.rds_sg.id]
+
+  tags = {
+    Name = "rds-mysql-product"
+    Type = "Product"
+  }
 
   depends_on = [
     aws_db_subnet_group.rds,
