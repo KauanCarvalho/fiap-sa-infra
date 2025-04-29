@@ -1,23 +1,37 @@
 variable "region" {
   description = "AWS region where resources will be deployed"
   type        = string
-  default     = "us-east-1"
 }
 
-variable "cluster_name" {
-  description = "Name of the EKS cluster and prefix for all related resources"
-  type        = string
-  default     = "fiap-restaurant-production"
-}
-
-variable "cluster_role_arn" {
-  description = "ARN of the IAM role with EKS cluster permissions (required)"
+variable "project_name" {
+  description = "Name of the project"
   type        = string
 }
 
-variable "node_role_arn" {
-  description = "ARN of the IAM role for EKS worker nodes (required)"
+variable "lab_role" {
+  description = "IAM role for the lab"
   type        = string
+}
+
+variable "node_group" {
+  description = "Node group name"
+  type        = string
+}
+
+variable "instance_type" {
+  description = "EC2 instance type for the EKS nodes"
+  type        = string
+}
+
+variable "principal_arn" {
+  description = "IAM role for the EKS cluster"
+  type        = string
+}
+
+variable "policy_arn" {
+  description = "IAM policy for the EKS cluster"
+  type        = string
+  default     = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
 }
 
 variable "mysql_order_db_name" {
