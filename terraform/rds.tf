@@ -4,10 +4,11 @@ resource "aws_security_group" "rds_sg" {
   vpc_id      = data.aws_vpc.vpc.id
 
   ingress {
+    description = "Allow MySQL from within VPC"
     from_port   = 3306
     to_port     = 3306
     protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    cidr_blocks = ["172.31.0.0/16"]
   }
 
   egress {
