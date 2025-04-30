@@ -32,58 +32,6 @@ resource "aws_db_subnet_group" "rds" {
   }
 }
 
-resource "aws_db_instance" "rds_mysql_order" {
-  allocated_storage      = 20
-  storage_type           = "gp2"
-  engine                 = "mysql"
-  engine_version         = "8.0"
-  instance_class         = "db.t3.micro"
-  db_name                = var.mysql_order_db_name
-  username               = var.mysql_order_db_username
-  password               = var.mysql_order_db_password
-  skip_final_snapshot    = true
-  publicly_accessible    = false
-
-  db_subnet_group_name   = aws_db_subnet_group.rds.name
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
-
-  tags = {
-    Name = "rds-mysql-order"
-    Type = "order"
-  }
-
-  depends_on = [
-    aws_db_subnet_group.rds,
-    aws_security_group.rds_sg
-  ]
-}
-
-resource "aws_db_instance" "rds_mysql_product" {
-  allocated_storage      = 20
-  storage_type           = "gp2"
-  engine                 = "mysql"
-  engine_version         = "8.0"
-  instance_class         = "db.t3.micro"
-  db_name                = var.mysql_product_db_name
-  username               = var.mysql_product_db_username
-  password               = var.mysql_product_db_password
-  skip_final_snapshot    = true
-  publicly_accessible    = false
-
-  db_subnet_group_name   = aws_db_subnet_group.rds.name
-  vpc_security_group_ids = [aws_security_group.rds_sg.id]
-
-  tags = {
-    Name = "rds-mysql-product"
-    Type = "Product"
-  }
-
-  depends_on = [
-    aws_db_subnet_group.rds,
-    aws_security_group.rds_sg
-  ]
-}
-
 resource "aws_db_instance" "rds_mysql_order_service" {
   allocated_storage      = 20
   storage_type           = "gp2"
