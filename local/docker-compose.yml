@@ -1,0 +1,80 @@
+services:
+  mongo:
+    container_name: fiap_sa_mongo
+    image: mongo:7.0
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secret
+    volumes:
+      - /var/lib/fiap-sa-payment-service/mongo:/data/db
+      - ./testdata/init.js:/docker-entrypoint-initdb.d/init.js
+    ports:
+      - 27017:27017
+    networks:
+      - shared_network
+
+  mysql:
+    container_name: fiap_sa_mysql
+    image: mysql:8.4
+    restart: always
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - /var/lib/fiap-sa-product-service/mysql:/var/lib/mysql
+      - ./testdata/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - 3306:3306
+    networks:
+      - shared_network
+
+  order-app:
+    container_name: fiap_sa_order_service_app
+    build:
+      context: ../../fiap-sa-order-service
+      target: base
+    volumes:
+      - ../../fiap-sa-order-service:/app
+    depends_on:
+      - mysql
+    ports:
+      - 8082:8082
+    command: tail -f /dev/null
+    networks:
+      - shared_network
+
+  product-app:
+    container_name: fiap_sa_product_service_app
+    build:
+      context: ../../fiap-sa-product-service
+      target: base
+    volumes:
+      - ../../fiap-sa-product-service:/app
+    depends_on:
+      - mysql
+    ports:
+      - 8081:8081
+    command: tail -f /dev/null
+    networks:
+      - shared_network
+
+  payment-app:
+    container_name: fiap_sa_payment_service_app
+    build:
+      context: ../../fiap-sa-payment-service
+      target: base
+    volumes:
+      - ../../fiap-sa-payment-service:/app
+    depends_on:
+      - mongo
+    ports:
+      - 8083:8083
+    command: tail -f /dev/null
+    networks:
+      - shared_network
+
+networks:
+  shared_network:
+    name: shared_network
+    driver: bridge
+    external: true
