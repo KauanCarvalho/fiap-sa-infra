@@ -28,6 +28,24 @@ services:
     networks:
       - shared_network
 
+  localstack:
+    container_name: fiap_sa_localstack
+    image: localstack/localstack:latest
+    restart: always
+    environment:
+      - SERVICES=sns,sqs
+      - EDGE_PORT=4566
+      - DATA_DIR=/data
+      - DEFAULT_REGION=us-east-1
+      - HOSTNAME_EXTERNAL=localstack
+    ports:
+      - 4566:4566
+      - 4571:4571
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - shared_network
+
   order-app:
     container_name: fiap_sa_order_service_app
     build:
