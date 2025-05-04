@@ -27,3 +27,15 @@ output "mysql_product_db_password" {
   value     = var.mysql_product_db_password
   sensitive = true
 }
+
+output "sns_topic_arn" {
+  value = aws_sns_topic.payment_events.arn
+}
+
+output "sqs_queue_url" {
+  value = aws_sqs_queue.order_queue.id
+}
+
+output "sqs_queue_arn" {
+  value = aws_sqs_queue.order_queue.arn
+}
