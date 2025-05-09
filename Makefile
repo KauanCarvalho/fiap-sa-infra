@@ -29,6 +29,7 @@ logs:
 	docker-compose -f $(COMPOSE_DIR)/docker-compose.yml logs -f
 
 ps:
+	@echo "📦 Showing container status..."
 	@docker-compose -f $(COMPOSE_DIR)/docker-compose.yml ps
 
 create-sns-sqs:
@@ -45,6 +46,13 @@ create-sns-sqs:
 		docker exec fiap_sa_localstack awslocal sqs create-queue --queue-name fiap_sa_order_service_payment_events; \
 	else \
 		echo "✅ SQS queue 'fiap_sa_order_service_payment_events' already exists."; \
+	fi
+
+	@if ! docker exec fiap_sa_localstack awslocal sqs list-queues --query "QueueUrls" --output text | grep -q "fiap_sa_payment_service_webhook_events"; then \
+		echo "🔧 Creating SQS queue 'fiap_sa_payment_service_webhook_events'..."; \
+		docker exec fiap_sa_localstack awslocal sqs create-queue --queue-name fiap_sa_payment_service_webhook_events; \
+	else \
+		echo "✅ SQS queue 'fiap_sa_payment_service_webhook_events' already exists."; \
 	fi
 
 	@docker exec fiap_sa_localstack bash -c '\
