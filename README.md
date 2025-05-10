@@ -2,7 +2,7 @@
 
 Este repositório gerencia a infraestrutura do ecossistema de microsserviços `fiap-sa`, tanto para **desenvolvimento local** quanto para **implantação em produção**.
 
-## 🌐 Represetação da comunnicação entre os serviços
+## 🌐 Represetação da comunicação entre os serviços
 
 ```mermaid
 flowchart TD
@@ -127,6 +127,9 @@ A infraestrutura de produção está definida no diretório [`production/terrafo
 fiap-sa-infra/
 ├── local/                  # Ambiente de desenvolvimento local (Docker Compose)
 │   └── docker-compose.yml
+|   ├── testdata/           # "Scripts" de criação de banco de dados e seeds inciais
+|   ├── init.js             # Para o MongoDB
+|   └── init.sql            # Para o MySQL
 ├── production/
 │   └── terraform/          # Infraestrutura de produção (Terraform Cloud)
 ├── Makefile                # Comandos comuns para desenvolvimento e infraestrutura
