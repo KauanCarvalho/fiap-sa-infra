@@ -6,7 +6,7 @@ NETWORK := shared_network
 
 help:
 	@echo ""
-	@echo "Available commands:"
+	@echo "Available targets:"
 	@echo "  make up                 # Start local containers"
 	@echo "  make down               # Stop and remove containers"
 	@echo "  make logs               # Follow logs of all services"
