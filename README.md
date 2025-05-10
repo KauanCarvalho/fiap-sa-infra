@@ -12,29 +12,29 @@ flowchart TD
         MySQL_Order[("MySQL - [RDS]")]
     end
     subgraph Non_relational["Non-relational"]
-        MongoDB_Payment[("MongoDB - [Atlas]")]
+        MongoDB_Payment{{"MongoDB - [Atlas]"}}
     end
   end
 
   subgraph Messaging_Layer["Messaging Layer"]
-    SQS_Payment["Queue: fiap_sa_payment_service_webhook_events"]
-    SQS_Order["Queue: fiap_sa_order_service_payment_events"]
-    SNS_Payment["Notification: fiap_sa_payment_service_payment_events"]
+    SQS_Payment{{"fiap_sa_payment_service_webhook_events"}}
+    SQS_Order{{"fiap_sa_order_service_payment_events"}}
+    SNS_Payment(["SNS: fiap_sa_payment_service_payment_events"])
   end
 
   subgraph Services["Services"]
     subgraph Payment["fiap-sa-payment-service"]
-      Payment_Worker[("Worker")]
-      Payment_API[("API")]
+      Payment_Worker["Worker"]
+      Payment_API["API"]
     end
 
     subgraph Product["fiap-sa-product-service"]
-      Product_Service[("API")]
+      Product_Service["API"]
     end
 
     subgraph Order["fiap-sa-order-service"]
-      Order_Worker[("worker")]
-      Order_API[("API")]
+      Order_Worker["Worker"]
+      Order_API["API"]
     end
   end
 
