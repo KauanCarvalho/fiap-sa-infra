@@ -6,11 +6,20 @@ Este repositório gerencia a infraestrutura do ecossistema de microsserviços `f
 
 ```mermaid
 flowchart TD
+  subgraph API_Gateway["API Gateway"]
+    POST_Webhook(["POST - /prod/webhook_events"])
+  end
+
+  subgraph Lambda["Lambda"]
+    SQSEnqueuePaymentWebhook(["SQSEnqueuePaymentWebhook"])
+  end
+
   subgraph Databases["Databases"]
     subgraph Relational["Relational"]
         MySQL_Product[("MySQL - [RDS]")]
         MySQL_Order[("MySQL - [RDS]")]
     end
+
     subgraph Non_relational["Non-relational"]
         MongoDB_Payment{{"MongoDB - [Atlas]"}}
     end
@@ -38,6 +47,8 @@ flowchart TD
     end
   end
 
+  POST_Webhook --> SQSEnqueuePaymentWebhook
+  SQSEnqueuePaymentWebhook --> SQS_Payment
   Payment_Worker --> MongoDB_Payment
   Payment_API --> MongoDB_Payment
   Product_Service --> MySQL_Product
