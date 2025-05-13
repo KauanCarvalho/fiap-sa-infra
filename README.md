@@ -8,10 +8,16 @@ Este repositório gerencia a infraestrutura do ecossistema de microsserviços `f
 flowchart TD
   subgraph API_Gateway["API Gateway"]
     POST_Webhook(["POST - /prod/webhook_events"])
+    POST_SignUp(["POST - /signup"])
+    POST_Login(["POST - /login"])
+    POST_Checkout(["POST - /checkout"])
   end
 
   subgraph Lambda["Lambda"]
     SQSEnqueuePaymentWebhook(["SQSEnqueuePaymentWebhook"])
+    UserAuth(["UserAuth"])
+    UserLogin(["UserLogin"])
+    CheckoutHandler(["CheckoutHandler"])
   end
 
   subgraph Databases["Databases"]
@@ -26,9 +32,13 @@ flowchart TD
   end
 
   subgraph Messaging_Layer["Messaging Layer"]
-    SQS_Payment{{"fiap_sa_payment_service_webhook_events"}}
-    SQS_Order{{"fiap_sa_order_service_payment_events"}}
+    SQS_Payment{{"SQS: fiap_sa_payment_service_webhook_events"}}
+    SQS_Order{{"SQS: fiap_sa_order_service_payment_events"}}
     SNS_Payment(["SNS: fiap_sa_payment_service_payment_events"])
+  end
+
+  subgraph CognitoLayer["CognitoLayer"]
+    Cognito{{PoolID}}
   end
 
   subgraph Services["Services"]
@@ -49,6 +59,15 @@ flowchart TD
 
   POST_Webhook --> SQSEnqueuePaymentWebhook
   SQSEnqueuePaymentWebhook --> SQS_Payment
+  SQS_Payment --> Payment_Worker
+  POST_SignUp --> UserAuth
+  UserAuth --> Cognito
+  UserAuth --> Order_API
+  POST_Login --> UserLogin
+  UserLogin --> Cognito
+  POST_Checkout --> CheckoutHandler
+  CheckoutHandler --> Cognito
+  CheckoutHandler --> Order_API
   Payment_Worker --> MongoDB_Payment
   Payment_API --> MongoDB_Payment
   Product_Service --> MySQL_Product
@@ -70,6 +89,9 @@ flowchart TD
 - `fiap-sa-product-service`
 - `fiap-sa-payment-service`
 - Bancos de dados: **MySQL** e **MongoDB**
+- API Gaetways (AWS)
+- Lambdas (AWS)
+- Cognito (AWS)
 
 ---
 
