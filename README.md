@@ -1,5 +1,7 @@
 # 🏗️ fiap-sa-infra
 
+[Vídeo no youtube da fase 4](https://youtu.be/DnscHNmON-A).
+
 Este repositório gerencia a infraestrutura do ecossistema de microsserviços `fiap-sa`, tanto para **desenvolvimento local** quanto para **implantação em produção**.
 
 ## 🌐 Represetação da comunicação entre os serviços
